@@ -1,5 +1,23 @@
 var tasks = {};
 
+var auditTask =function(taskEl) {
+
+  // get date from task element
+  var date= $(taskEL).find("span").text().trim();
+  
+  var time = moment(date, "L").set("hour", 17)
+
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+  
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <= 2){ 
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
+
+
 var createTask = function (taskText, taskDate, taskList) {
   // create elements that make up a task item
   var taskLi = $("<li>").addClass("list-group-item");
@@ -12,6 +30,9 @@ var createTask = function (taskText, taskDate, taskList) {
 
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
+
+  //check due date
+  auditTask(taskLi);
 
 
   // append to ul list on the page
@@ -82,7 +103,7 @@ $(".card .list-group").sortable({
   scroll: false,
   tolerance: "pointer",
   helper: "clone",
-  activate: function (event) {
+  activate: function (_event) {
     console.log("activate", this);
   },
   deactivate: function (event) {
@@ -128,14 +149,14 @@ $(".card .list-group").sortable({
 $("#trash").droppable({
   accept: ".card .list-group-item",
   tolerance: "touch",
-  drop: function(event, ui) {
+  drop: function (event, ui) {
     ui.draggable.remove();
     console.log("drop");
   },
-  over: function(event,ui){
-    console.log ("over");
+  over: function (event, ui) {
+    console.log("over");
   },
-  out: function(event, ui){
+  out: function (event, ui) {
     console.log("out");
   }
 });
@@ -144,6 +165,9 @@ $("#trash").droppable({
 $("#task-form-modal").on("show.bs.modal", function () {
   // clear values
   $("#modalTaskDescription, #modalDueDate").val("");
+  $("#modalDueDate").datepicker({
+    minDate: 1
+  });
 });
 
 // modal is fully visible
@@ -157,6 +181,7 @@ $("#task-form-modal .btn-primary").click(function () {
   // get form values
   var taskText = $("#modalTaskDescription").val();
   var taskDate = $("#modalDueDate").val();
+
 
   if (taskText && taskDate) {
     createTask(taskText, taskDate, "toDo");
@@ -184,48 +209,64 @@ $(".list-group").on("click", "span", function () {
 
   //create new input element
   var dateInput = $("<input>")
-    .attr("typr", "text")
     .attr("type", "text")
     .addClass("form-control")
     .val(date);
 
-  // swap out elements
   $(this).replaceWith(dateInput);
 
-  //automatically focus on new elements
-  dateInput.trigger("focus");
-
-
-  //value of due datw was changed
-  $(".list-group").on("blur", "input[type='text']", function () {
-    //get current text
-    var date = $(this)
-      .val()
-      .trim();
-
-    //get the parent ul's id attribute
-    var status = $(this)
-      .closest(".list-group")
-      .attr("id")
-      .replace("list-", "");
-
-    //get the task's posistionin the ist of other li elements
-    var index = $(this)
-      .closest(".list-group-item")
-      .index();
-
-    //updatw task in array and re-save to local storage
-    task[status][index].date = date;
-    saveTasks();
-
-    //recreate span element with bootstrap clsses
-    var taskSpan = $("<span>")
-      .addClass("badge badge-primay badge-pill")
-      .text(date);
-
-    //replace input with span element
-    $(this).replaceWith(taskSpan);
+  //enable jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function(){
+      //when calender is closed, force a "change" event on the 'dateInput'
+      $(this).trigger("change");
+    }
   });
+
+  // automatically bring up the calender
+  dateInput.trigger("focus");
+});
+
+// swap out elements
+$(this).replaceWith(dateInput);
+
+//automatically focus on new elements
+dateInput.trigger("focus");
+
+
+//value of due date was changed
+$(".list-group").on("change", "input[type='text']", function () {
+  //get current text
+  var date = $(this)
+    .val()
+    
+
+  //get the parent ul's id attribute
+  var status = $(this)
+    .closest(".list-group")
+    .attr("id")
+    .replace("list-", "");
+
+  //get the task's posistionin the ist of other li elements
+  var index = $(this)
+    .closest(".list-group-item")
+    .index();
+
+  //updatw task in array and re-save to local storage
+  task[status][index].date = date;
+  saveTasks();
+
+  //recreate span element with bootstrap clsses
+  var taskSpan = $("<span>")
+    .addClass("badge badge-primay badge-pill")
+    .text(date);
+
+  //replace input with span element
+  $(this).replaceWith(taskSpan);
+
+  //pass task's <li> element into auditTask() to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 // remove all tasks
 $("#remove-tasks").on("click", function () {
@@ -234,7 +275,14 @@ $("#remove-tasks").on("click", function () {
     $("#list-" + key).empty();
   }
   saveTasks();
+
 });
+var auditTask =function(_taskEl) {
+  //to ensure element is getting to the function
+  console.log(taskEl);
+};
+
+
 
 // load tasks for the first time
 loadTasks();
